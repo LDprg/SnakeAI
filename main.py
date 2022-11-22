@@ -43,6 +43,7 @@ def gameLoop():
     STATE = ""
 
     MOVE = [1, 0]
+    OLD_MOVE = MOVE
 
     FOOD_POS = getFoodPos(SNAKE_BODY)
 
@@ -67,6 +68,11 @@ def gameLoop():
                 elif event.key == pygame.K_ESCAPE:
                     active = False
             elif event.type == gametick:
+                if OLD_MOVE[0] == -MOVE[0] and OLD_MOVE[1] == -MOVE[1]:
+                    MOVE = OLD_MOVE
+                else:
+                    OLD_MOVE = MOVE
+
                 SNAKE_POS[0] += MOVE[0]
                 SNAKE_POS[1] += MOVE[1]
 
