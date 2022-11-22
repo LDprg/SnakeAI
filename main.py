@@ -64,6 +64,8 @@ def gameLoop():
                     MOVE = [0, -1]
                 elif event.key == pygame.K_DOWN:
                     MOVE = [0, 1]
+                elif event.key == pygame.K_ESCAPE:
+                    active = False
             elif event.type == gametick:
                 SNAKE_POS[0] += MOVE[0]
                 SNAKE_POS[1] += MOVE[1]
@@ -128,7 +130,8 @@ while active:
         if event.type == pygame.QUIT:
             active = False
         elif event.type == pygame.KEYDOWN:
-            active = False
+            if event.key == pygame.K_SPACE:
+                active = False
 
     window.fill(BACKGROUND_COLOR)
 
