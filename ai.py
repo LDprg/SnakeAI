@@ -1,22 +1,25 @@
 import random
+from collections import deque
+
 import numpy as np
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 
 
 class Brain(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
-        self.stack = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
-        )
+        self.linear1 = nn.Linear(input_size, hidden_size)
+        self.linear2 = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        return self.stack(x)
+        x = self.linear1(x)
+        x = F.relu(x)
+        x = self.linear2(x)
+        return x
 
     def save(self, file_name='brain.pth'):
         model_folder_path = 'nn'
@@ -61,7 +64,7 @@ class BrainTrainer:
 
 
 class AI:
-    possible_moves = np.array([[0, 1], [0, -1], [1, 0], [-1, 0]])
+    possible_moves = [[0, 1], [0, -1], [1, 0], [-1, 0]]
 
     def __init__(self):
         self.move = None
@@ -70,6 +73,7 @@ class AI:
         self.game = None
         self.totalReward = 0.0
         self.reward = 0.0
+        self.memory = deque()
 
         self.learningRate = 0.1
         self.discount = 0.9
@@ -81,6 +85,10 @@ class AI:
     def setGame(self, game):
         self.game = game
 
+    def setReward(self, reward):
+        self.totalReward += reward
+        self.reward = reward
+
     def getMove(self):
         self.state_old = self.getState()
         self.move = self.get_action(self.state_old)
@@ -90,6 +98,7 @@ class AI:
         self.state = self.getState()
 
         self.train_short_memory(self.state_old, self.move, self.reward, self.state, self.game.active)
+        self.remember(self.state_old, self.move, self.reward, self.state, self.game.active)
 
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
@@ -98,8 +107,10 @@ class AI:
         state = [
             self.game.snake.pos[0],
             self.game.snake.pos[1],
-            self.game.food.pos[0],
-            self.game.food.pos[1],
+            self.game.snake.pos[0] > self.game.food.pos[0],
+            self.game.snake.pos[0] < self.game.food.pos[0],
+            self.game.snake.pos[1] > self.game.food.pos[1],
+            self.game.snake.pos[1] < self.game.food.pos[1],
         ]
 
         return np.array(state, dtype=int)
@@ -110,5 +121,11 @@ class AI:
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
-            move = torch.argmax(prediction).item()
+            item = torch.argmax(prediction).item()
+            move = self.possible_moves[round(np.tanh(item)*len(self.possible_moves))]
         return move
+
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append([state, action, reward, next_state, done])
+        if len(self.memory) > 100000:
+            self.memory.popleft()

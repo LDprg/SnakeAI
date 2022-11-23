@@ -42,6 +42,7 @@ class Snake:
         self.pos += move
 
         if self.selfCollide() or self.outOfBounds():
+            self.game.ai.setReward(-100)
             self.game.close()
 
         self.body = self.body[:self.length]
@@ -105,21 +106,6 @@ class Game:
 
     def event(self):
         for event in pygame.event.get():
-            # if event.type == pygame.QUIT:
-            #     exit()
-            # elif event.type == pygame.KEYDOWN:
-            #     if event.key == pygame.K_LEFT:
-            #         self.move = np.array([-1, 0])
-            #     elif event.key == pygame.K_RIGHT:
-            #         self.move = np.array([1, 0])
-            #     elif event.key == pygame.K_UP:
-            #         self.move = np.array([0, -1])
-            #     elif event.key == pygame.K_DOWN:
-            #         self.move = np.array([0, 1])
-            #     elif event.key == pygame.K_ESCAPE:
-            #         exit()
-            #     elif event.key == pygame.K_SPACE:
-            #         self.close()
             if event.type == GAMETICK:
                 self.update()
 
@@ -129,8 +115,11 @@ class Game:
         self.snake.move(self.move)
 
         if self.food.collide(self.snake):
+            self.ai.setReward(100)
             self.snake.eat()
             self.food.random(self.snake)
+        else:
+            self.ai.setReward(50 / getDistance(self.snake.pos, self.food.pos))
 
         self.ai.update()
 
@@ -157,14 +146,15 @@ class Game:
 pygame.init()
 window = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Snake Game")
+pygame.time.set_timer(GAMETICK, 5)
 
 AI = ai.AI()
 
 for i in range(10000000):
-    if i % 100 == 0:
-        pygame.time.set_timer(GAMETICK, 100)
-    else:
-        pygame.time.set_timer(GAMETICK, 5)
+    # if i % 100 == 0:
+    #     pygame.time.set_timer(GAMETICK, 100)
+    # else:
+    #     pygame.time.set_timer(GAMETICK, 5)
 
     Game(window, AI).loop()
 
