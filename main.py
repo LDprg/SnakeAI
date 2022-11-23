@@ -76,8 +76,9 @@ class Food:
 
 
 class Game:
-    def __init__(self, window):
+    def __init__(self, window, ai):
         self.window = window
+        self.ai = ai
         self.active = True
 
         self.snake = Snake(self, [round(Game.getGrid()[0] / 2), round(Game.getGrid()[1] / 2)], 3)
@@ -117,6 +118,8 @@ class Game:
                 self.update()
 
     def update(self):
+        self.move = self.ai.get_move()
+
         self.snake.move(self.move)
 
         if self.food.collide(self.snake):
@@ -153,6 +156,6 @@ for i in range(100):
     if i % 50 == 0:
         pygame.time.set_timer(GAMETICK, 100)
     else:
-        pygame.time.set_timer(GAMETICK, 1)
+        pygame.time.set_timer(GAMETICK, 100)
 
-    Game(window).loop()
+    Game(window, AI).loop()
