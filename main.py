@@ -79,6 +79,8 @@ class Game:
     def __init__(self, window, ai):
         self.window = window
         self.ai = ai
+        self.ai.setGame(self)
+
         self.active = True
 
         self.snake = Snake(self, [round(Game.getGrid()[0] / 2), round(Game.getGrid()[1] / 2)], 3)
@@ -118,7 +120,7 @@ class Game:
                 self.update()
 
     def update(self):
-        self.move = self.ai.get_move()
+        self.move = self.ai.getMove()
 
         self.snake.move(self.move)
 

@@ -5,9 +5,11 @@ class AI:
     possible_moves = [[1, 0], [0, 1], [-1, 0], [0, -1]]
 
     def __init__(self):
-        pass
+        self.game = None
 
-    def get_move(self):
-        rand = random.uniform(0, 1)
+    def setGame(self, game):
+        self.game = game
+
+    def getMove(self):
         return random.choice(self.possible_moves)
 
