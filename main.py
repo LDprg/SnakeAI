@@ -1,9 +1,6 @@
 import random
 import pygame
-import torch.nn as nn
-
-WINDOW_SIZE = (600, 600)
-BLOCK_SIZE = 60
+import ai
 
 SNAKE_COLOR = (255, 0, 0)
 FOOD_COLOR = (0, 255, 0)
@@ -11,137 +8,151 @@ FOOD_COLOR = (0, 255, 0)
 BACKGROUND_COLOR = (0, 0, 0)
 GRID_COLOR = (255, 255, 255)
 
-START_LENGTH = 3
-START_POS = [1, 1]
+BLOCK_SIZE = 40
+GRID_SIZE = 15
 
-SPEED = 250
+WINDOW_SIZE = (BLOCK_SIZE * GRID_SIZE, BLOCK_SIZE * GRID_SIZE)
 
-pygame.init()
-
-window = pygame.display.set_mode(WINDOW_SIZE)
-pygame.display.set_caption("Snake Game")
+GAMETICK = pygame.USEREVENT + 1
 
 
-def getFoodPos(snakeBody):
-    while True:
-        maxX = int(WINDOW_SIZE[0] / BLOCK_SIZE) - 1
-        maxY = int(WINDOW_SIZE[1] / BLOCK_SIZE) - 1
-
-        x = random.randint(0, maxX)
-        y = random.randint(0, maxY)
-        if [x, y] not in snakeBody:
-            return [x, y]
+def getDistance(pos1, pos2):
+    return ((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2) ** 0.5
 
 
-def gameLoop():
-    SNAKE_POS = START_POS
-    SNAKE_LENGTH = START_LENGTH
+class Snake:
+    def __init__(self, game, pos, length):
+        self.game = game
 
-    SNAKE_BODY = []
-    SNAKE_BODY.insert(0, list(SNAKE_POS))
+        self.pos = pos
+        self.length = length
 
-    STATE = ""
+        self.body = []
 
-    MOVE = [1, 0]
-    OLD_MOVE = MOVE
+    def draw(self):
+        pygame.draw.rect(self.game.window, SNAKE_COLOR,
+                         (self.pos[0] * BLOCK_SIZE, self.pos[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        for i in self.body:
+            pygame.draw.rect(self.game.window, SNAKE_COLOR,
+                             (i[0] * BLOCK_SIZE, i[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
-    FOOD_POS = getFoodPos(SNAKE_BODY)
+    def move(self, move):
+        self.body.insert(0, self.pos[:])
+        self.pos[0] += move[0]
+        self.pos[1] += move[1]
 
-    gametick = pygame.USEREVENT + 1
-    pygame.time.set_timer(gametick, SPEED)
+        if self.pos in self.body or self.outOfBounds():
+            self.game.close()
 
-    active = True
+        self.body = self.body[:self.length]
 
-    while active:
+    def eat(self):
+        self.length += 1
+
+    def outOfBounds(self):
+        return (self.pos[0] < 0 or self.pos[0] >= WINDOW_SIZE[0] / BLOCK_SIZE) or \
+               (self.pos[1] < 0 or self.pos[1] >= WINDOW_SIZE[1] / BLOCK_SIZE)
+
+
+class Food:
+    def __init__(self, game):
+        self.game = game
+        self.pos = [1, 1]
+
+    def draw(self):
+        pygame.draw.rect(self.game.window, FOOD_COLOR,
+                         [self.pos[0] * BLOCK_SIZE, self.pos[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE])
+
+    def random(self, snake):
+        while True:
+            x = random.randint(0, Game.getGrid()[0])
+            y = random.randint(0, Game.getGrid()[1])
+            if [x, y] not in snake.body and snake.pos != [x, y]:
+                self.pos = [x, y]
+                break
+
+    def collide(self, snake):
+        return snake.pos == self.pos
+
+
+class Game:
+    def __init__(self, window):
+        self.window = window
+        self.active = True
+
+        self.snake = Snake(self, [round(Game.getGrid()[0] / 2), round(Game.getGrid()[1] / 2)], 3)
+        self.food = Food(self)
+
+        if random.randint(0, 1) == 0:
+            self.move = [0, random.choice((-1, 1))]
+        else:
+            self.move = [random.choice((-1, 1)), 0]
+
+    @staticmethod
+    def getGrid():
+        return [int(WINDOW_SIZE[0] / BLOCK_SIZE) - 1, int(WINDOW_SIZE[1] / BLOCK_SIZE) - 1]
+
+    def loop(self):
+        while self.active:
+            self.run()
+
+    def event(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                active = False
+                exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    MOVE = [-1, 0]
+                    self.move = [-1, 0]
                 elif event.key == pygame.K_RIGHT:
-                    MOVE = [1, 0]
+                    self.move = [1, 0]
                 elif event.key == pygame.K_UP:
-                    MOVE = [0, -1]
+                    self.move = [0, -1]
                 elif event.key == pygame.K_DOWN:
-                    MOVE = [0, 1]
+                    self.move = [0, 1]
                 elif event.key == pygame.K_ESCAPE:
-                    active = False
-            elif event.type == gametick:
-                if OLD_MOVE[0] == -MOVE[0] and OLD_MOVE[1] == -MOVE[1]:
-                    MOVE = OLD_MOVE
-                else:
-                    OLD_MOVE = MOVE
+                    exit()
+                elif event.key == pygame.K_SPACE:
+                    self.close()
+            elif event.type == GAMETICK:
+                self.update()
 
-                SNAKE_POS[0] += MOVE[0]
-                SNAKE_POS[1] += MOVE[1]
+    def update(self):
+        self.snake.move(self.move)
 
-                while len(SNAKE_BODY) > SNAKE_LENGTH - 1:
-                    SNAKE_BODY.pop()
+        if self.food.collide(self.snake):
+            self.snake.eat()
+            self.food.random(self.snake)
 
-                for pos in SNAKE_BODY:
-                    if pos == SNAKE_POS:
-                        STATE = "GAME OVER"
-                        active = False
-                        break
+    def draw(self):
+        self.window.fill(BACKGROUND_COLOR)
 
-                for pos in SNAKE_BODY:
-                    if pos == FOOD_POS:
-                        SNAKE_LENGTH += 1
-                        FOOD_POS = getFoodPos(SNAKE_BODY)
-
-                SNAKE_BODY.insert(0, list(SNAKE_POS))
-
-                for pos in SNAKE_BODY:
-                    if pos[0] < 0 or pos[0] > (WINDOW_SIZE[0] / BLOCK_SIZE) - 1 or \
-                            pos[1] < 0 or pos[1] > (WINDOW_SIZE[1] / BLOCK_SIZE) - 1:
-                        STATE = "GAME OVER"
-                        active = False
-
-                if SNAKE_LENGTH >= (WINDOW_SIZE[0] / BLOCK_SIZE) * (WINDOW_SIZE[1] / BLOCK_SIZE):
-                    STATE = "YOU WIN"
-                    active = False
-
-        window.fill(BACKGROUND_COLOR)
+        self.food.draw()
+        self.snake.draw()
 
         for x in range(0, WINDOW_SIZE[0], BLOCK_SIZE):
-            x_pos = x / BLOCK_SIZE
             for y in range(0, WINDOW_SIZE[1], BLOCK_SIZE):
-                y_pos = y / BLOCK_SIZE
-
-                if x_pos == FOOD_POS[0] and y_pos == FOOD_POS[1]:
-                    pygame.draw.rect(window, FOOD_COLOR, [x, y, BLOCK_SIZE, BLOCK_SIZE])
-
-                for pos in SNAKE_BODY:
-                    if x_pos == pos[0] and y_pos == pos[1]:
-                        pygame.draw.rect(window, SNAKE_COLOR, [x, y, BLOCK_SIZE, BLOCK_SIZE])
-
                 pygame.draw.rect(window, GRID_COLOR, [x, y, BLOCK_SIZE, BLOCK_SIZE], 1)
 
         pygame.display.update()
 
-    return [STATE, SNAKE_LENGTH]
+    def run(self):
+        self.event()
+        self.draw()
+
+    def close(self):
+        self.active = False
 
 
-STATE, SNAKE_LENGTH = gameLoop()
+pygame.init()
+window = pygame.display.set_mode(WINDOW_SIZE)
+pygame.display.set_caption("Snake Game")
 
-if STATE == "":
-    exit()
+AI = ai.AI()
 
-STATE += " - " + str(SNAKE_LENGTH)
+for i in range(100):
+    if i % 50 == 0:
+        pygame.time.set_timer(GAMETICK, 100)
+    else:
+        pygame.time.set_timer(GAMETICK, 1)
 
-active = True
-while active:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            active = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                active = False
-
-    window.fill(BACKGROUND_COLOR)
-
-    window.blit(pygame.font.SysFont('freesanbold.ttf', 50).render(STATE, True, GRID_COLOR),
-                (WINDOW_SIZE[0] / 2 - 100, WINDOW_SIZE[1] / 2 - 25))
-
-    pygame.display.update()
+    Game(window).loop()
