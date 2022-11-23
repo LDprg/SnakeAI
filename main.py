@@ -39,8 +39,7 @@ class Snake:
 
     def move(self, move):
         self.body.insert(0, np.copy(self.pos))
-        self.pos[0] += move[0]
-        self.pos[1] += move[1]
+        self.pos += move
 
         if self.selfCollide() or self.outOfBounds():
             self.game.close()
@@ -49,7 +48,6 @@ class Snake:
 
     def eat(self):
         self.length += 1
-        self.game.ai.setReward(1)
 
     def outOfBounds(self):
         return (self.pos[0] < 0 or self.pos[0] >= WINDOW_SIZE[0] / BLOCK_SIZE) or \
@@ -83,8 +81,6 @@ class Food:
 class Game:
     def __init__(self, window, ai):
         self.window = window
-        self.ai = ai
-        self.ai.setGame(self)
 
         self.active = True
 
@@ -95,6 +91,9 @@ class Game:
             self.move = np.array([0, random.choice((-1, 1))])
         else:
             self.move = np.array([random.choice((-1, 1)), 0])
+
+        self.ai = ai
+        self.ai.setGame(self)
 
     @staticmethod
     def getGrid():
@@ -133,9 +132,7 @@ class Game:
             self.snake.eat()
             self.food.random(self.snake)
 
-        self.ai.setReward(50/getDistance(self.snake.pos, self.food.pos))
-
-        self.ai.updateQ()
+        self.ai.update()
 
     def draw(self):
         self.window.fill(BACKGROUND_COLOR)
@@ -155,7 +152,6 @@ class Game:
 
     def close(self):
         self.active = False
-        self.ai.setReward(-100)
 
 
 pygame.init()
@@ -167,10 +163,8 @@ AI = ai.AI()
 for i in range(10000000):
     if i % 100 == 0:
         pygame.time.set_timer(GAMETICK, 100)
-        AI.learning = False
     else:
         pygame.time.set_timer(GAMETICK, 5)
-        AI.learning = True
 
     Game(window, AI).loop()
 
