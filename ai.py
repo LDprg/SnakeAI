@@ -121,8 +121,7 @@ class AI:
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
-            item = torch.argmax(prediction).item()
-            move = self.possible_moves[round(np.tanh(item)*len(self.possible_moves))]
+            move = torch.argmax(prediction).item()
         return move
 
     def remember(self, state, action, reward, next_state, done):

@@ -1,4 +1,6 @@
 import random
+import threading
+
 import pygame
 import numpy as np
 import ai
@@ -13,8 +15,6 @@ BLOCK_SIZE = 40
 GRID_SIZE = 15
 
 WINDOW_SIZE = (BLOCK_SIZE * GRID_SIZE, BLOCK_SIZE * GRID_SIZE)
-
-GAMETICK = pygame.USEREVENT + 1
 
 
 def getDistance(pos1, pos2):
@@ -100,15 +100,6 @@ class Game:
     def getGrid():
         return np.array([int(WINDOW_SIZE[0] / BLOCK_SIZE) - 1, int(WINDOW_SIZE[1] / BLOCK_SIZE) - 1])
 
-    def loop(self):
-        while self.active:
-            self.run()
-
-    def event(self):
-        for event in pygame.event.get():
-            if event.type == GAMETICK:
-                self.update()
-
     def update(self):
         self.move = self.ai.getMove()
 
@@ -136,8 +127,12 @@ class Game:
         pygame.display.update()
 
     def run(self):
-        self.event()
-        self.draw()
+        while self.active:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close()
+
+            self.draw()
 
     def close(self):
         self.active = False
@@ -146,16 +141,12 @@ class Game:
 pygame.init()
 window = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Snake Game")
-pygame.time.set_timer(GAMETICK, 5)
 
 AI = ai.AI()
 
 for i in range(10000000):
-    # if i % 100 == 0:
-    #     pygame.time.set_timer(GAMETICK, 100)
-    # else:
-    #     pygame.time.set_timer(GAMETICK, 5)
+    game = Game(window, AI)
 
-    Game(window, AI).loop()
+    game.run()
 
     print("Game: " + str(i) + " Score: " + str(AI.totalReward))
